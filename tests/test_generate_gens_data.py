@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 sys.path.append("../src")
 
-from src.example_package.generate_gens_data import (
+from gens_input_data_tools.generate_cov_and_baf import (
     generate_baf_bed,
     generate_cov_bed,
     main,
