@@ -63,9 +63,9 @@ CHR_ORDER_MAP = {c: i for i, c in enumerate(CHR_ORDER)}
 
 def main(
     label: str,
-    coverage: Path,
-    gvcf: Path,
-    baf_positions: Path,
+    coverage: Optional[Path],
+    gvcf: Optional[Path],
+    baf_positions: Optional[Path],
     out_dir: Path,
     bigwig: bool,
     baf_min_depth: int,
@@ -78,36 +78,41 @@ def main(
     cov_output = out_dir / f"{label}.cov.bed"
     baf_output = out_dir / f"{label}.baf.bed"
 
-    if not baf_positions.exists() or not baf_positions.is_file():
+    # FIXME: Check that BAF is provided if gvcf (can it be done at argparse point?)
+
+    if baf_positions and (not baf_positions.exists() or not baf_positions.is_file()):
         print(
             f"BAF-positions file {str(baf_positions)} does not exist or is not a valid file. Exiting."
         )
         sys.exit(1)
 
-    if not coverage.exists() or not coverage.is_file():
+    if coverage and (not coverage.exists() or not coverage.is_file()):
         print(
             f"Coverage file {str(coverage)} does not exist or is not a valid file. Exiting."
         )
         sys.exit(1)
 
-    if not gvcf.exists() or not gvcf.is_file():
+    if gvcf and (not gvcf.exists() or not gvcf.is_file()):
         print(f"gVCF {str(gvcf)} does not exist or is not a valid file. Exiting.")
         sys.exit(1)
 
-    print("Calculating coverage data", file=sys.stderr)
-    with open(cov_output, "w", encoding="utf-8") as covout:
-        for win_size, prefix in zip(COV_WINDOW_SIZES, PREFIXES):
-            generate_cov_bed(coverage, win_size, prefix, covout)
+    if coverage:
+        print("Calculating coverage data", file=sys.stderr)
+        with open(cov_output, "w", encoding="utf-8") as covout:
+            for win_size, prefix in zip(COV_WINDOW_SIZES, PREFIXES):
+                generate_cov_bed(coverage, win_size, prefix, covout)
 
-    print("Calculating BAFs from gvcf...", file=sys.stderr)
-    tmp_baf = out_dir / f"{label}.baf.tmp"
-    with open(tmp_baf, "w", encoding="utf-8") as tmpout:
-        parse_gvcfvaf(gvcf, baf_positions, tmpout, baf_min_depth)
+    tmp_baf = None
+    if gvcf and baf_positions:
+        print("Calculating BAFs from gvcf...", file=sys.stderr)
+        tmp_baf = out_dir / f"{label}.baf.tmp"
+        with open(tmp_baf, "w", encoding="utf-8") as tmpout:
+            parse_gvcfvaf(gvcf, baf_positions, tmpout, baf_min_depth)
 
-    with open(baf_output, "w", encoding="utf-8") as bafout:
-        for skip_n, prefix in zip(BAF_SKIP_N, PREFIXES):
-            print(f"Outputting BAF {prefix}...", file=sys.stderr)
-            generate_baf_bed(str(tmp_baf), skip_n, prefix, bafout)
+        with open(baf_output, "w", encoding="utf-8") as bafout:
+            for skip_n, prefix in zip(BAF_SKIP_N, PREFIXES):
+                print(f"Outputting BAF {prefix}...", file=sys.stderr)
+                generate_baf_bed(str(tmp_baf), skip_n, prefix, bafout)
 
     if bigwig:
         cov_sizes = out_dir / f"{label}.cov.sizes"
@@ -143,7 +148,8 @@ def main(
             ["tabix", "-f", "-p", "bed", str(cov_output) + ".gz"], check=True
         )
 
-    os.unlink(tmp_baf)
+    if tmp_baf:
+        os.unlink(tmp_baf)
 
 
 def generate_baf_bed(fn: str, skip: int, prefix: str, out_fh: TextIO) -> None:
@@ -429,19 +435,16 @@ def parse_arguments():
     parser.add_argument(
         "--coverage",
         help="Standardized coverage, typically calculated using GATK's CollectReadCounts and DenoiseReadCounts",
-        required=True,
         type=Path,
     )
     parser.add_argument(
         "--gvcf",
         help="gVCF file for calculating B-allele frequencies",
-        required=True,
         type=Path,
     )
     parser.add_argument(
         "--baf_positions",
         help="Two column tsv file SNP positions for which to calculate BAFs. An example file with sites > 0.05 in Gnomad can be downloaded from here: https://github.com/SMD-Bioinformatics-Lund/gens/releases/download/v4.3.0/gnomad_hg38.0.05.txt.gz",
-        required=True,
         type=Path,
     )
     parser.add_argument(
