@@ -29,7 +29,7 @@ Coverage: Given a per-range coverage file. Given certain window sizes, calculate
 Both yields bed files with different levels of resolutions, distinguished with prefixes in the output ({joined_prefixes}).
 """
 
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 
 CHR_ORDER = [
     "1",
@@ -475,6 +475,20 @@ def parse_arguments():
     args = parser.parse_args()
     return args
 
+
+def cli() -> None:
+    args = parse_arguments()
+    main(
+        args.label,
+        args.coverage,
+        args.gvcf,
+        args.baf_positions,
+        args.outdir,
+        args.bigwig,
+        args.baf_min_depth,
+        args.bgzip_tabix_output,
+        args.threads,
+    )
 
 if __name__ == "__main__":
     args = parse_arguments()
