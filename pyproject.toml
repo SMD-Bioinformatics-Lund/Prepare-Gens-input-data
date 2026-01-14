@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gens_input_data_tools"
-version = "1.0.0"
+version = "2.0.0"
 authors = [
     { name="Jakob Willforss", email="jakob.willforss@skane.se" },
     { name="Markus Johansson", email="markus.h.johansson@skane.se" },
