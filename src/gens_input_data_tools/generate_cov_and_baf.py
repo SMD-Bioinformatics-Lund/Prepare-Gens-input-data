@@ -368,7 +368,11 @@ class GVCFEntry:
         depth = self.sample_entries.get("DP")
         if not depth:
             return False
-        if int(depth) >= depth_filter:
+        try:
+            depth_int = int(depth)
+        except ValueError:
+            return False
+        if depth_int >= depth_filter:
             return True
         else:
             return False
