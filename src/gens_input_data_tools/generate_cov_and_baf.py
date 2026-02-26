@@ -29,7 +29,7 @@ Coverage: Given a per-range coverage file. Given certain window sizes, calculate
 Both yields bed files with different levels of resolutions, distinguished with prefixes in the output ({joined_prefixes}).
 """
 
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 CHR_ORDER = [
     "1",
@@ -368,7 +368,11 @@ class GVCFEntry:
         depth = self.sample_entries.get("DP")
         if not depth:
             return False
-        if int(depth) >= depth_filter:
+        try:
+            depth_int = int(depth)
+        except ValueError:
+            return False
+        if depth_int >= depth_filter:
             return True
         else:
             return False
@@ -377,16 +381,25 @@ class GVCFEntry:
         """
         If the alt allele is non-SNV (i.e. several inserted bases), return None
         Otherwise return alt allele count / allele depth
-        Returns None for variants without genotype call (./.)
+        Returns None for variants without genotype call (./.) or non-diploid calls.
         """
 
-        gt = self.sample_entries["GT"]
-        if "." in gt:
+        gt = self.sample_entries.get("GT")
+        if not gt or "." in gt:
             return None
-        _ref_str, alt_str = gt.replace("|", "/").split("/")
-        alt = int(alt_str)
 
-        allele_depths = [int(d) for d in self.sample_entries["AD"].split(",")]
+        gt_alleles = gt.replace("|", "/").split("/")
+        if len(gt_alleles) != 2:
+            return None
+
+        try:
+            _ref_str, alt_str = gt_alleles
+            alt = int(alt_str)
+            allele_depths = [int(d) for d in self.sample_entries["AD"].split(",")]
+            dp = int(self.sample_entries["DP"])
+        except (ValueError, KeyError):
+            return None
+
         if alt != 0:
             if alt > len(self.alt_alleles):
                 return None
@@ -397,7 +410,6 @@ class GVCFEntry:
         else:
             alt_count = max(allele_depths[1:])
 
-        dp = int(self.sample_entries["DP"])
         b_allele_freq = alt_count / dp
         return b_allele_freq
 

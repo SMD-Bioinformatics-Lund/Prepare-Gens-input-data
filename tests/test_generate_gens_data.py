@@ -3,7 +3,7 @@ import io
 from pathlib import Path
 
 import sys
-sys.path.append("../src")
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 
 from gens_input_data_tools.generate_cov_and_baf import (
     generate_baf_bed,
@@ -208,6 +208,44 @@ def test_parse_gvcfvaf_skips_missing_genotype(tmp_path: Path, capsys):
 
     assert output.getvalue().splitlines() == []
     assert "1 variants skipped!" in captured.err
+
+
+def test_parse_gvcfvaf_skips_non_diploid_genotypes(tmp_path: Path, capsys):
+    gvcf_file = tmp_path / "sample.vcf.gz"
+    with gzip.open(gvcf_file, "wt") as fh:
+        fh.write("##header\n")
+        fh.write("1\t10\t.\tA\tC\t.\tPASS\tEND=10\tGT:AD:DP\t1:0,5:5\n")
+        fh.write("1\t20\t.\tA\tC\t.\tPASS\tEND=20\tGT:AD:DP\t0/0/1:5,5:10\n")
+        fh.write("1\t30\t.\tA\tC\t.\tPASS\tEND=30\tGT:AD:DP\t0/1:5,5:10\n")
+
+    gnomad_file = tmp_path / "gnomad.tsv"
+    gnomad_file.write_text("\n".join(["1\t10", "1\t20", "1\t30"]))
+
+    output = io.StringIO()
+    parse_gvcfvaf(gvcf_file, gnomad_file, output, depth_threshold=1)
+    captured = capsys.readouterr()
+
+    assert output.getvalue().splitlines() == ["1\t30\t0.5"]
+    assert "2 variants skipped!" in captured.err
+
+
+def test_parse_gvcfvaf_skips_malformed_sample_fields(tmp_path: Path, capsys):
+    gvcf_file = tmp_path / "sample.vcf.gz"
+    with gzip.open(gvcf_file, "wt") as fh:
+        fh.write("##header\n")
+        fh.write("1\t10\t.\tA\tC\t.\tPASS\tEND=10\tGT:AD:DP\t0/1:a,b:10\n")
+        fh.write("1\t20\t.\tA\tC\t.\tPASS\tEND=20\tGT:AD:DP\t0/1:5,5:x\n")
+        fh.write("1\t30\t.\tA\tC\t.\tPASS\tEND=30\tGT:AD:DP\t0/1:5,5:10\n")
+
+    gnomad_file = tmp_path / "gnomad.tsv"
+    gnomad_file.write_text("\n".join(["1\t10", "1\t20", "1\t30"]))
+
+    output = io.StringIO()
+    parse_gvcfvaf(gvcf_file, gnomad_file, output, depth_threshold=1)
+    captured = capsys.readouterr()
+
+    assert output.getvalue().splitlines() == ["1\t30\t0.5"]
+    assert "2 variants skipped!" in captured.err
 
 
 def test_generate_gens_data_end_to_end(tmp_path: Path):
