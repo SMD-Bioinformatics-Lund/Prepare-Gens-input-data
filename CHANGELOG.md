@@ -1,8 +1,14 @@
+# v2.0.1
+
+## `generate_cov_and_baf.py`: v1.1.5
+
+* Handle non-diploid genotypes safely in BAF parsing`
+
 # v2.0.0
 
 First official release
 
-## generate_cov_and_baf.py: v1.1.4
+## `generate_cov_and_baf.py`: v1.1.4
 
 * Transfer the code from the Gens repo.
 * Add `cli()` function allowing it to be executed as a script from the Python package.
